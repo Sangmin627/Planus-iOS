@@ -93,8 +93,13 @@ final class TodoDetailIcnView: UIView {
         guard let mode,
               var selectedAttr = TodoDetailAttribute(rawValue: index) else { return }
         
-        if selectedAttr == viewingAttr && (selectedAttr != .title && selectedAttr != .calendar) && mode != .viewable  {
-            delegate?.deactivate(attr: selectedAttr)
+        if selectedAttr == viewingAttr,
+           (selectedAttr != .title && selectedAttr != .calendar),
+           mode != .viewable  {
+            // public인 경우 그룹은 deactivate 하면 안됨
+            if !((mode == .newPublic || mode == .editablePublic) && selectedAttr == .group) {
+                delegate?.deactivate(attr: selectedAttr)
+            }
             selectedAttr = .title
         }
         delegate?.move(from: viewingAttr, to: selectedAttr)

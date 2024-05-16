@@ -16,8 +16,8 @@ extension GroupTodoDetailViewModel {
         
         var mode: TodoDetailSceneAuthority {
             switch self {
-            case .new: return .new
-            case .edit: return .editable
+            case .new: return .newPublic
+            case .edit: return .editablePublic
             case .view: return .viewable
             }
         }

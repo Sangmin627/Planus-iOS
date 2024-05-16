@@ -178,10 +178,10 @@ private extension TodoDetailViewController {
         self.todoDetailView.icnView.setMode(mode: mode)
         
         switch mode {
-        case .editable:
+        case .editablePrivate, .editablePublic:
             todoDetailView.removeButton.isHidden = false
             todoDetailView.titleView.todoTitleField.becomeFirstResponder()
-        case .new:
+        case .newPrivate, .newPublic:
             todoDetailView.removeButton.isHidden = true
             todoDetailView.titleView.todoTitleField.becomeFirstResponder()
         case .viewable:

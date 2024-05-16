@@ -16,8 +16,8 @@ extension MyTodoDetailViewModel {
         
         var mode: TodoDetailSceneAuthority {
             switch self {
-            case .new: return .new
-            case .edit: return .editable
+            case .new: return .newPrivate
+            case .edit: return .editablePrivate
             case .view: return .viewable
             }
         }

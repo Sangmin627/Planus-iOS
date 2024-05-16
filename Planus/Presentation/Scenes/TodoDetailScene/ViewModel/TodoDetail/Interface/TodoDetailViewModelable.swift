@@ -9,8 +9,11 @@ import Foundation
 import RxSwift
 
 enum TodoDetailSceneAuthority {
-    case new
-    case editable
+    // 개인과 공용의 차이 (그룹 변경 가능 여부)
+    case newPrivate
+    case editablePrivate
+    case newPublic
+    case editablePublic
     case viewable
 }
 
