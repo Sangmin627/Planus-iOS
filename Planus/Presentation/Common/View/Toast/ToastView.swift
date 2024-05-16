@@ -81,11 +81,13 @@ class ToastView: UIView {
 
 extension UIViewController {
     func showToast(message: Message, fromBotton: CGFloat? = nil) {
+        guard let naviationController = self.navigationController else { return }
+        
         let toast = ToastView(message: message)
-        self.navigationController?.view.addSubview(toast)
+        naviationController.view.addSubview(toast)
         toast.snp.makeConstraints {
             $0.centerX.equalToSuperview()
-            $0.bottom.equalTo(self.view.safeAreaLayoutGuide.snp.bottom).inset(fromBotton == nil ? 100 : fromBotton!)
+            $0.bottom.equalTo(naviationController.view.safeAreaLayoutGuide.snp.bottom).inset(fromBotton == nil ? 100 : fromBotton!)
             $0.width.lessThanOrEqualToSuperview().inset(50)
         }
         UIView.animate(withDuration: 1, delay: 2.0, options: .curveEaseOut, animations: {
