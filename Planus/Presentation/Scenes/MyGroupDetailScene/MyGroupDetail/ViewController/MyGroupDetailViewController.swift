@@ -606,9 +606,6 @@ extension MyGroupDetailViewController: UICollectionViewDataSource, UICollectionV
 
             return cell
         case .calendar:
-            guard let cell = collectionView.dequeueReusableCell(withReuseIdentifier: CalendarDailyCell.identifier, for: indexPath) as? CalendarDailyCell else {
-                return UICollectionViewCell()
-            }
             return calendarCell(collectionView, cellForItemAt: indexPath)
         }
     }
