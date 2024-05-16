@@ -124,7 +124,7 @@ private extension DailyCalendarViewController {
             .withUnretained(self)
             .subscribe(onNext: { vc, _ in
                 dailyCalendarView.collectionView.reloadData()
-                
+                print("reload??")
                 if dailyCalendarView.spinner.isAnimating {
                     dailyCalendarView.spinner.setAnimatedIsHidden(true, duration: 0.2, onCompletion: {
                         dailyCalendarView.spinner.stopAnimating()
@@ -232,7 +232,7 @@ extension DailyCalendarViewController: UICollectionViewDataSource, UICollectionV
             completion: todoItem.isCompleted,
             isInteractable: isInteractable
         )
-        
+        print(todoItem.title, todoItem.categoryColor) // 왜 안바뀌는 것인가??? 도대체???
         cell.fill { [weak self] in
             self?.didTappedCompletionBtnAt.accept(indexPath)
             Vibration.light.vibrate()

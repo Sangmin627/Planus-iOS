@@ -193,6 +193,13 @@ private extension MyDailyCalendarViewModel {
             .subscribe(onNext: { vm, category in
                 guard let id = category.id else { return }
                 vm.categoryDict[id] = category
+                
+                let indexPaths = vm.todos.enumerated().flatMap { (section, todoList) in
+                    todoList.enumerated().map { (item, todo) in
+                        IndexPath(item: item, section: section)
+                    }
+                }
+                vm.updateViewModel(at: indexPaths)
                 vm.needReloadData.onNext(())
             })
             .disposed(by: bag)
