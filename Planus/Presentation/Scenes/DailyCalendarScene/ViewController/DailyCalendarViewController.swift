@@ -232,7 +232,7 @@ extension DailyCalendarViewController: UICollectionViewDataSource, UICollectionV
             completion: todoItem.isCompleted,
             isInteractable: isInteractable
         )
-        print(todoItem.title, todoItem.categoryColor) // 왜 안바뀌는 것인가??? 도대체???
+
         cell.fill { [weak self] in
             self?.didTappedCompletionBtnAt.accept(indexPath)
             Vibration.light.vibrate()

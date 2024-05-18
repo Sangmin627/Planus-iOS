@@ -678,7 +678,14 @@ private extension HomeCalendarViewModel {
         guard indexPath.item % 7 == 0 else { return }
         
         Array(mainDays[indexPath.section].enumerated())[indexPath.item..<indexPath.item + 7].forEach { (item, day) in
-            guard var todoList = todos[day.date] else { return }
+            guard var todoList = todos[day.date] else {
+                if HolidayPool.shared.holidays[day.date] != nil {
+                    let holiday = determineHoliday(indexPath: IndexPath(item: item, section: indexPath.section), totalTodoCount: 0)
+                    dailyViewModels[day.date] = DailyViewModel(periodTodo: [], singleTodo: [], holiday: holiday)
+                }
+                return
+            }
+            
             if let filterGroupId = try? filteredGroupId.value() {
                 todoList = todoList.filter( { $0.groupId == filterGroupId })
             }
@@ -691,6 +698,8 @@ private extension HomeCalendarViewModel {
                 singleTodos: singleTodoList,
                 periodTodos: periodTodoList
             )
+            
+            
         }
     }
 }

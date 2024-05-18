@@ -349,7 +349,13 @@ extension MemberProfileViewModel {
         guard indexPath.item % 7 == 0 else { return }
 
         Array(mainDays[indexPath.section].enumerated())[indexPath.item..<indexPath.item + 7].forEach { (item, day) in
-            guard let todoList = todos[day.date] else { return }
+            guard let todoList = todos[day.date] else {
+                if HolidayPool.shared.holidays[day.date] != nil {
+                    let holiday = determineHoliday(indexPath: IndexPath(item: item, section: indexPath.section), totalTodoCount: 0)
+                    dailyViewModels[day.date] = DailyViewModel(periodTodo: [], singleTodo: [], holiday: holiday)
+                }
+                return
+            }
 
             let singleTodoList = prepareSingleTodosInDay(at: IndexPath(item: item, section: indexPath.section), todos: todoList)
             let periodTodoList = preparePeriodTodosInDay(at: IndexPath(item: item, section: indexPath.section), todos: todoList)
