@@ -48,14 +48,14 @@ final class MyGroupDetailViewController: UIViewController, UIGestureRecognizerDe
         return view
     }()
     
-    let  swipeBar: UIImageView = {
+    let swipeBar: UIImageView = {
         let imageView = UIImageView(image: UIImage(named: "swipeBarLeft"))
         imageView.contentMode = .scaleToFill
         imageView.isUserInteractionEnabled = true
         return imageView
     }()
     
-    let  buttonsView: AnimatedStrechButtonListView = {
+    let buttonsView: AnimatedStrechButtonListView = {
         let stretchButtonView = AnimatedStrechButtonListView(axis: .up)
         return stretchButtonView
     }()
@@ -361,12 +361,10 @@ extension MyGroupDetailViewController {
 // MARK: - Actions
 extension MyGroupDetailViewController {
     func scrollToHeader(section: Int) {
-        guard let layoutAttributes =  collectionView.layoutAttributesForSupplementaryElement(ofKind: UICollectionView.elementKindSectionHeader, at: IndexPath(item: 0, section: section)) else { return }
-        let viewOrigin = CGPoint(x: layoutAttributes.frame.origin.x, y: layoutAttributes.frame.origin.y);
-        var offset = collectionView.contentOffset;
-        let height = (view.window?.windowScene?.statusBarManager?.statusBarFrame.height ?? 0) + (navigationController?.navigationBar.frame.height ?? 0)
-        offset.y = viewOrigin.y - collectionView.contentInset.top - height
-        collectionView.setContentOffset(offset, animated: true)
+        guard let attributes = collectionView.collectionViewLayout.layoutAttributesForSupplementaryView(ofKind: UICollectionView.elementKindSectionHeader, at: IndexPath(item: 0, section: section)) else { return }
+        
+        let safeAreaTopHeight = (view.window?.windowScene?.statusBarManager?.statusBarFrame.height ?? 0) + (navigationController?.navigationBar.frame.height ?? 0)
+        collectionView.setContentOffset(CGPoint(x: 0, y: attributes.frame.origin.y - collectionView.contentInset.top - safeAreaTopHeight), animated: true)
     }
     
     func setSectionCount(mode: MyGroupDetailPageType, trailingAction: (() -> Void)? = nil, completion: (() -> Void)? = nil) {
@@ -475,7 +473,7 @@ private extension MyGroupDetailViewController {
     
     func configureLayout() {
         collectionView.snp.makeConstraints {
-            $0.top.leading.trailing.bottom.equalToSuperview()
+            $0.edges.equalToSuperview()
         }
         
         swipeBar.snp.makeConstraints {
