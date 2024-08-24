@@ -30,11 +30,12 @@ final class AppCoordinator: Coordinator {
     
     func start() {
         showInitialPage()
-        checkAutoSignIn()
+//        checkAutoSignIn()
     }
     
     private func showInitialPage() {
         let vc = InitialViewController()
+        vc.delegate = self
         dependency.window.rootViewController = vc
         dependency.window.makeKeyAndVisible()
         self.viewTransitionAnimation()
@@ -152,5 +153,11 @@ extension AppCoordinator: CoordinatorFinishDelegate {
         childCoordinators = childCoordinators.filter {
             $0.type != childCoordinator.type
         }
+    }
+}
+
+extension AppCoordinator: InitDelegate {
+    func fin() {
+        checkAutoSignIn()
     }
 }

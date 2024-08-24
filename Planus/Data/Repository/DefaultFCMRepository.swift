@@ -22,7 +22,7 @@ final class DefaultFCMRepository: FCMRepository {
         let dto = FCMTokenRequestDTO(fcmToken: fcm)
         
         let endPoint = APIEndPoint(
-            url: BaseURL.main + URLPathComponent.app + "/fcm-token",
+            url: BaseURL.main() + URLPathComponent.app + "/fcm-token",
             requestType: .patch,
             body: dto,
             query: nil,

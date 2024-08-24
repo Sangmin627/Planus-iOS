@@ -8,5 +8,12 @@
 import Foundation
 
 struct BaseURL {
-    static let main = Bundle.main.baseURL
+//    static let main: String = {
+//        return (UserDefaults.standard.object(forKey: "serverTestURL") as? String) ?? "none"
+//    }()
+//    
+    static func main() -> String {
+        return (UserDefaults.standard.object(forKey: "serverTestURL") as? String) ?? "none"
+
+    }
 }
