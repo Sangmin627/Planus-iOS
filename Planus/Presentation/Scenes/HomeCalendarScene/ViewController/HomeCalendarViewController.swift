@@ -10,11 +10,14 @@ import RxSwift
 import RxCocoa
 
 final class HomeCalendarViewController: UIViewController {
-    
-    private var bag = DisposeBag()
-    
-    private var homeCalendarView: HomeCalendarView?
-    private var viewModel: HomeCalendarViewModel?
+    private let bag = DisposeBag()
+    private let viewModel: HomeCalendarViewModel
+    private var homeCalendarView: HomeCalendarView {
+        guard let typedView = view as? HomeCalendarView else {
+            fatalError("HomeCalendarViewController.view must be HomeCalendarView")
+        }
+        return typedView
+    }
     
     // MARK: - UI Event
     private let isMonthChanged = PublishRelay<Date>()
@@ -27,25 +30,29 @@ final class HomeCalendarViewController: UIViewController {
     private let movedToIndex = PublishRelay<HomeCalendarViewModel.CalendarMovable>()
     
     private var observeScroll = false
-        
-    convenience init(viewModel: HomeCalendarViewModel) {
-        self.init(nibName: nil, bundle: nil)
+
+    init(viewModel: HomeCalendarViewModel) {
         self.viewModel = viewModel
+        super.init(nibName: nil, bundle: nil)
     }
-    
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
     override func loadView() {
-        super.loadView()
-        
-        configureView()
+        view = HomeCalendarView(frame: UIScreen.main.bounds)
     }
-    
+
     override func viewDidLoad() {
         super.viewDidLoad()
-        
-        configureVC()
+
+        configureCollectionView()
+        configureNavigationBar()
         bind()
     }
-    
+
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         configureNavigationBar()
@@ -54,33 +61,20 @@ final class HomeCalendarViewController: UIViewController {
 
 // MARK: - Configure
 private extension HomeCalendarViewController {
-    func configureVC() {
-        guard let homeCalendarView else { return }
-        
+    func configureCollectionView() {
         homeCalendarView.collectionView.delegate = self
         homeCalendarView.collectionView.dataSource = self
     }
-    
+
     func configureNavigationBar() {
-        guard let homeCalendarView else { return }
-        
-        self.navigationItem.titleView = homeCalendarView.yearMonthButton
-        self.navigationItem.setRightBarButton(UIBarButtonItem(customView: homeCalendarView.profileButton), animated: false)
-    }
-    
-    func configureView() {
-        let view = HomeCalendarView(frame: self.view.frame)
-        self.view = view
-        self.homeCalendarView = view
+        navigationItem.titleView = homeCalendarView.yearMonthButton
+        navigationItem.setRightBarButton(UIBarButtonItem(customView: homeCalendarView.profileButton), animated: false)
     }
 }
 
-// MARK: - bind viewModel
+// MARK: - Bind
 private extension HomeCalendarViewController {
     func bind() {
-        guard let viewModel,
-              let homeCalendarView else { return }
-  
         let createPeriodTodoCompletionHandler = { indexPath in
             guard let cell = homeCalendarView.collectionView.cellForItem(
                 at: indexPath
@@ -110,104 +104,89 @@ private extension HomeCalendarViewController {
         )
         
         let output = viewModel.transform(input: input)
-        
-        output
-            .dateTitleUpdated
+
+        bind(output: output)
+    }
+
+    func bind(output: HomeCalendarViewModel.Output) {
+        output.dateTitleUpdated
             .observe(on: MainScheduler.asyncInstance)
-            .withUnretained(self)
-            .subscribe { vc, text in
-                homeCalendarView.yearMonthButton.setTitle(text, for: .normal)
-            }
-            .disposed(by: bag)
-        
-        output
-            .needMoveTo
-            .observe(on: MainScheduler.asyncInstance)
-            .withUnretained(self)
-            .subscribe { vc, type in
-                switch type {
-                case .initialized(let index):
-                    vc.initializeToIndex(centerIndex: index)
-                case .jump(let index):
-                    vc.jumpToIndex(index: index)
-                default:
-                    return
-                }
-            }
-            .disposed(by: bag)
-        
-        output.showMonthPicker
-            .observe(on: MainScheduler.asyncInstance)
-            .withUnretained(self)
-            .subscribe(onNext: { vc, args in
-                vc.showMonthPicker(
-                    firstYear: args.first,
-                    current: args.current,
-                    lastYear: args.last
-                )
+            .subscribe(onNext: { [weak self] text in
+                self?.homeCalendarView.yearMonthButton.setTitle(text, for: .normal)
             })
             .disposed(by: bag)
-        
-        output
-            .reloadSectionSet
+
+        output.needMoveTo
             .observe(on: MainScheduler.asyncInstance)
-            .withUnretained(self)
-            .subscribe(onNext: { vc, type in
+            .subscribe(onNext: { [weak self] type in
+                guard let self else { return }
+                switch type {
+                case .initialized(let index):
+                    initializeToIndex(centerIndex: index)
+                case .jump(let index):
+                    jumpToIndex(index: index)
+                default:
+                    break
+                }
+            })
+            .disposed(by: bag)
+
+        output.showMonthPicker
+            .observe(on: MainScheduler.asyncInstance)
+            .subscribe(onNext: { [weak self] args in
+                self?.showMonthPicker(firstYear: args.first, current: args.current, lastYear: args.last)
+            })
+            .disposed(by: bag)
+
+        output.reloadSectionSet
+            .observe(on: MainScheduler.asyncInstance)
+            .subscribe(onNext: { [weak self] type in
+                guard let self else { return }
                 switch type {
                 case .internalChange(let indexSet):
                     UIView.performWithoutAnimation {
-                        homeCalendarView.collectionView.reloadSections(indexSet)
+                        self.homeCalendarView.collectionView.reloadSections(indexSet)
                     }
                 case .apiFetched(let indexSet):
-                    homeCalendarView.collectionView.reloadSections(indexSet)
+                    self.homeCalendarView.collectionView.reloadSections(indexSet)
                 }
             })
             .disposed(by: bag)
-        
+
         output.profileImageFetched
             .observe(on: MainScheduler.asyncInstance)
-            .withUnretained(self)
-            .subscribe(onNext: { vc, data in
-                homeCalendarView.profileButton.fill(with: data)
+            .subscribe(onNext: { [weak self] data in
+                self?.homeCalendarView.profileButton.fill(with: data)
             })
             .disposed(by: bag)
-        
+
         output.showAlert
+            .observe(on: MainScheduler.asyncInstance)
+            .subscribe(onNext: { [weak self] message in
+                self?.showToast(message: message)
+            })
+            .disposed(by: bag)
+
+        output.groupListFetched
             .compactMap { $0 }
             .observe(on: MainScheduler.asyncInstance)
-            .withUnretained(self)
-            .subscribe(onNext: { vc, message in
-                vc.showToast(message: message)
+            .subscribe(onNext: { [weak self] groups in
+                self?.setGroupButton(groups: groups)
             })
             .disposed(by: bag)
-        
-        output
-            .groupListFetched
-            .compactMap { $0 }
+
+        output.didFinishRefreshing
             .observe(on: MainScheduler.asyncInstance)
-            .withUnretained(self)
-            .subscribe(onNext: { vc, groups in
-                vc.setGroupButton(groups: groups)
+            .subscribe(onNext: { [weak self] _ in
+                self?.didFetchRefreshedData.accept(())
             })
             .disposed(by: bag)
-        
-        output
-            .didFinishRefreshing
-            .observe(on: MainScheduler.asyncInstance)
-            .withUnretained(self)
-            .subscribe(onNext: { vc, _ in
-                vc.didFetchRefreshedData.accept(())
-            })
-            .disposed(by: bag)
-                    
     }
 }
 
 // MARK: Calendar Move Actions
 private extension HomeCalendarViewController {
     func jumpToIndex(index: Int) {
-        guard let homeCalendarView else { return }
-        
         observeScroll = false
         homeCalendarView.collectionView.contentOffset = CGPoint(x: CGFloat(index) * view.frame.width, y: 0)
         observeScroll = true
@@ -215,8 +194,6 @@ private extension HomeCalendarViewController {
     }
     
     func initializeToIndex(centerIndex: Int) {
-        guard let homeCalendarView else { return }
-        
         homeCalendarView.collectionView.performBatchUpdates({
             homeCalendarView.collectionView.reloadData()
         }, completion: { [weak self] _ in
@@ -244,7 +221,7 @@ private extension HomeCalendarViewController {
         let item = UIBarButtonItem(image: image, menu: buttonMenu)
         item.tintColor = .planusBlack
         navigationItem.setLeftBarButton(item, animated: true)
-        homeCalendarView?.groupListButton = item
+        homeCalendarView.groupListButton = item
     }
 
     func createGroupAction(title: String, groupId: Int?) -> UIAction {
@@ -257,8 +234,6 @@ private extension HomeCalendarViewController {
 // MARK: - show VC
 private extension HomeCalendarViewController {
     func showMonthPicker(firstYear: Date, current: Date, lastYear: Date) {
-        guard let homeCalendarView else { return }
-        
         let vc = MonthPickerViewController(firstYear: firstYear, lastYear: lastYear, currentDate: current) { [weak self] date in
             self?.isMonthChanged.accept(date)
         }
@@ -278,7 +253,7 @@ private extension HomeCalendarViewController {
 // MARK: - CollectionView DataSource, Delegate
 extension HomeCalendarViewController: UICollectionViewDataSource, UICollectionViewDelegate {
     func numberOfSections(in collectionView: UICollectionView) -> Int {
-        viewModel?.mainDays.count ?? Int()
+        viewModel.mainDays.count
     }
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         1
@@ -288,8 +263,7 @@ extension HomeCalendarViewController: UICollectionViewDataSource, UICollectionVi
         guard let cell = collectionView.dequeueReusableCell(
             withReuseIdentifier: MonthlyCalendarCell.reuseIdentifier,
             for: indexPath
-        ) as? MonthlyCalendarCell,
-              let viewModel else { return UICollectionViewCell() }
+        ) as? MonthlyCalendarCell else { return UICollectionViewCell() }
         
         cell.fill(
             section: indexPath.section,
@@ -320,4 +294,3 @@ extension HomeCalendarViewController: UIPopoverPresentationControllerDelegate {
         return .none
     }
 }
-
