@@ -376,20 +376,11 @@ private extension HomeCalendarViewModel {
     func bindProfileUseCase() {
         useCases.updateProfileUseCase
             .didUpdateProfile
-            .subscribe(onNext: { [weak self] profile in
-                guard let self else { return }
-                self.profile = profile
-                guard let imageUrl = profile.imageUrl else {
-                    self.fetchedProfileImage.onNext(nil)
-                    return
-                }
-                self.useCases.fetchImageUseCase.execute(key: imageUrl)
-                    .subscribe(onSuccess: { data in
-                        self.fetchedProfileImage.onNext(data)
-                    })
-                    .disposed(by: self.bag)
-        })
-        .disposed(by: bag)
+            .withUnretained(self)
+            .subscribe(onNext: { vm, profile in
+                vm.updateProfile(profile)
+            })
+            .disposed(by: bag)
     }
     
     func bindCategoryUseCase() {
@@ -537,6 +528,10 @@ private extension HomeCalendarViewModel {
 
 // MARK: Fetch Data
 private extension HomeCalendarViewModel {
+    func executeWithToken<T>(_ executable: @escaping (Token) -> Single<T>?) -> Single<T> {
+        useCases.executeWithTokenUseCase.execute(executable: executable)
+    }
+
     func fetchTodoList(from startIndex: Int, to endIndex: Int) {
         guard let currentDate = try? self.currentMonth.value(),
               let currentIndex = try? self.currentIndex.value() else { return }
@@ -547,12 +542,9 @@ private extension HomeCalendarViewModel {
         let startDate = sharedCalendar.date(byAdding: DateComponents(day: -7), to: sharedCalendar.startOfDay(for: startMonth)) ?? Date()
         let endDate = sharedCalendar.date(byAdding: DateComponents(day: 7), to: sharedCalendar.startOfDay(for: endMonth)) ?? Date()
         
-        useCases
-            .executeWithTokenUseCase
-            .execute() { [weak self] token in
-                return self?.useCases.readTodoListUseCase
-                    .execute(token: token, from: startDate, to: endDate)
-            }
+        executeWithToken { [weak self] token in
+            self?.useCases.readTodoListUseCase.execute(token: token, from: startDate, to: endDate)
+        }
             .subscribe(onSuccess: { [weak self] todoDict in
                 guard let self else { return }
                 self.todos.merge(todoDict) { (_, new) in new }
@@ -579,13 +571,9 @@ private extension HomeCalendarViewModel {
     }
     
     func groupsFetcher() -> Single<[GroupName]> {
-        useCases
-            .executeWithTokenUseCase
-            .execute { [weak self] token in
-                self?.useCases
-                    .fetchMyGroupNameListUseCase
-                    .execute(token: token)
-            }
+        executeWithToken { [weak self] token in
+            self?.useCases.fetchMyGroupNameListUseCase.execute(token: token)
+        }
             .do(onSuccess: { [weak self] groups in
                 self?.groups.removeAll()
                 groups.forEach {
@@ -596,13 +584,9 @@ private extension HomeCalendarViewModel {
     }
     
     func categoriesFetcher() -> Single<[Category]> {
-        useCases
-            .executeWithTokenUseCase
-            .execute() { [weak self] token in
-                self?.useCases
-                    .readCategoryListUseCase
-                    .execute(token: token)
-            }
+        executeWithToken { [weak self] token in
+            self?.useCases.readCategoryListUseCase.execute(token: token)
+        }
             .do(onSuccess: { [weak self] categories in
                 self?.memberCategories.removeAll()
                 categories.forEach {
@@ -613,11 +597,9 @@ private extension HomeCalendarViewModel {
     }
     
     func groupCategoriesFetcher() -> Single<[Category]> {
-        useCases
-            .executeWithTokenUseCase
-            .execute() { [weak self] token in
-                self?.useCases.fetchGroupCategoryListUseCase.execute(token: token)
-            }
+        executeWithToken { [weak self] token in
+            self?.useCases.fetchGroupCategoryListUseCase.execute(token: token)
+        }
             .do(onSuccess: { [weak self] categories in
                 self?.groupCategories.removeAll()
                 categories.forEach {
@@ -628,23 +610,30 @@ private extension HomeCalendarViewModel {
     }
     
     func fetchProfile() {
-        useCases
-            .executeWithTokenUseCase
-            .execute() { [weak self] token in
-                return self?.useCases.readProfileUseCase
-                    .execute(token: token)
-            }
+        executeWithToken { [weak self] token in
+            self?.useCases.readProfileUseCase.execute(token: token)
+        }
             .subscribe(onSuccess: { [weak self] profile in
-                guard let self else { return }
-                self.profile = profile
-                self.showAlert.onNext(Message(text: "\(profile.nickName)님 반갑습니다!", state: .normal))
+                self?.updateProfile(profile, needsWelcomeMessage: true)
+            })
+            .disposed(by: bag)
+    }
 
-                guard let imageUrl = profile.imageUrl else { return }
-                self.useCases.fetchImageUseCase.execute(key: imageUrl)
-                    .subscribe(onSuccess: { data in
-                        self.fetchedProfileImage.onNext(data)
-                    })
-                    .disposed(by: self.bag)
+    func updateProfile(_ profile: Profile, needsWelcomeMessage: Bool = false) {
+        self.profile = profile
+
+        if needsWelcomeMessage {
+            showAlert.onNext(Message(text: "\(profile.nickName)님 반갑습니다!", state: .normal))
+        }
+
+        guard let imageUrl = profile.imageUrl else {
+            fetchedProfileImage.onNext(nil)
+            return
+        }
+
+        useCases.fetchImageUseCase.execute(key: imageUrl)
+            .subscribe(onSuccess: { [weak self] data in
+                self?.fetchedProfileImage.onNext(data)
             })
             .disposed(by: bag)
     }
